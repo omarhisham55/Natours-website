@@ -29,32 +29,61 @@ const handleJWTError = () =>
 const handleExpiredJWTError = () =>
   new AppError("Your token has expired! Please log in again!", 401);
 
-const sendErrorDev = (err, res) => {
-  res.status(err.statusCode).json({
-    status: err.status,
-    error: err,
-    message: err.message,
-    stack: err.stack,
+const sendErrorDev = (err, req, res) => {
+  const isApiRequest = req.originalUrl.startsWith("/api");
+  //? API
+  if (isApiRequest) {
+    return res.status(err.statusCode).json({
+      status: err.status,
+      error: err,
+      message: err.message,
+      stack: err.stack,
+    });
+  }
+  //? Rendered website
+  console.error(`💥ERROR:`, err);
+  return res.status(err.statusCode).render("error", {
+    title: "Something went wrong!",
+    msg: err.message,
+  });
+};
+const sendErrorForApi = (statusCode, status, msg, res) => {
+  return res.status(statusCode).json({
+    status: status,
+    message: msg,
   });
 };
 
-const sendErrorProd = (err, res) => {
+const sendErrorForWeb = (statusCode, msg, res) => {
+  return res.status(statusCode).render("error", {
+    title: "Something went wrong!",
+    msg: msg,
+  });
+};
+const sendErrorProd = (err, req, res) => {
+  const isApiRequest = req.originalUrl.startsWith("/api");
+  //? API
+  if (isApiRequest) {
+    //: Operational, trusted error: send message to client
+    if (err.isOperational) {
+      return sendErrorForApi(err.statusCode, err.status, err.message, res);
+    } else {
+      //? Programming or other unknown error: don't leak error details
+      //: 1.Log error
+      console.error(`💥ERROR:`, err);
+      return sendErrorForApi(500, "error", "Something went wrong!", res);
+    }
+  }
+
+  //? Rendered website
   //: Operational, trusted error: send message to client
   if (err.isOperational) {
-    return res.status(err.statusCode).json({
-      status: err.status,
-      message: err.message,
-    });
+    return sendErrorForWeb(err.statusCode, err.message, res);
   } else {
-    //: Programming or other unknown error: don't leak error details
+    //? Programming or other unknown error: don't leak error details
     //: 1.Log error
     console.error(`💥ERROR:`, err);
-
-    //: 2.Send generic message
-    return res.status(500).json({
-      status: "error",
-      message: "Something went wrong!",
-    });
+    return sendErrorForWeb(500, "Please try again later!", res);
   }
 };
 
@@ -63,7 +92,7 @@ module.exports = (err, req, res, next) => {
   err.status = err.status || "error";
 
   if (process.env.NODE_ENV === "development") {
-    sendErrorDev(err, res);
+    sendErrorDev(err, req, res);
   } else if (process.env.NODE_ENV === "production") {
     //? let error = { ...err };
     console.log(err.constructor.name);
@@ -73,6 +102,6 @@ module.exports = (err, req, res, next) => {
     if (err.code === 11000) err = handleDuplicateFieldsDB(err);
     if (err.name === "JsonWebTokenError") err = handleJWTError();
     if (err.name === "TokenExpiredError") err = handleExpiredJWTError();
-    sendErrorProd(err, res);
+    sendErrorProd(err, req, res);
   }
 };

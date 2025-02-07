@@ -14,6 +14,7 @@ const tourRoute = require("./routes/tourRoutes");
 const userRoute = require("./routes/userRoutes");
 const reviewsRoute = require("./routes/reviewsRoutes");
 const viewRoute = require("./routes/viewRoutes");
+const bookingRoute = require("./routes/bookingRoutes");
 
 const app = express();
 
@@ -30,9 +31,9 @@ app.use(
   helmet.contentSecurityPolicy({
     directives: {
       imgSrc: ["'self'", "data:", "*"],
-      "script-src": ["'self'", "https://cdnjs.cloudflare.com"],
-      "default-src": ["'self'"],
-      "connect-src": ["'self'", '*'],
+      "script-src": ["'self'", "https://js.stripe.com"],
+      "default-src": ["'self'", "https://js.stripe.com"],
+      "connect-src": ["'self'", "*"],
     },
   })
 );
@@ -50,6 +51,7 @@ app.use("/api", limiter);
 
 //? Body parser, reading data from body into req.body
 app.use(express.json({ limit: "10kb" }));
+app.use(express.urlencoded({ extended: true, limit: "10kb" }));
 app.use(cookieParser());
 
 //? Data sanitization against NoSQL query injection
@@ -84,6 +86,7 @@ app.use("/", viewRoute);
 app.use("/api/v1/tours", tourRoute);
 app.use("/api/v1/users", userRoute);
 app.use("/api/v1/reviews", reviewsRoute);
+app.use("/api/v1/bookings", bookingRoute);
 
 app.all("*", (req, res, next) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server`, 404));

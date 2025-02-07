@@ -4,6 +4,8 @@ const {
   getAllUsers,
   getMe,
   updateMe,
+  uploadUserPhoto,
+  resizeUserPhoto,
   deleteMe,
   getUserById,
   createUser,
@@ -11,6 +13,7 @@ const {
   deleteUser,
 } = require("../controllers/userController");
 const authController = require("../controllers/authController");
+
 const router = express.Router();
 
 //* ////////////////Authentication////////////////////////////
@@ -31,7 +34,7 @@ router.patch(
 );
 
 router.get("/me", getMe, getUserById);
-router.patch("/updateMe", updateMe);
+router.patch("/updateMe", uploadUserPhoto, resizeUserPhoto, updateMe);
 router.delete("/deleteMe", deleteMe);
 
 //* ////////////////Admin Control////////////////////////////

@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken");
 const User = require("./../models/userModel");
 const catchAsync = require("./../utils/catchAsync");
 const AppError = require("./../utils/appError");
-const sendEmail = require("./../utils/email");
+const Email = require("./../utils/email");
 
 const signToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -43,6 +43,9 @@ exports.signup = catchAsync(async (req, res, next) => {
     password: req.body.password,
     passwordConfirm: req.body.passwordConfirm,
   });
+  const url = `${req.protocol}://${req.get("host")}/account`;
+  console.log(url);
+  await new Email(newUser, url).sendWelcome();
   createAndSendToken(newUser, 201, res);
 });
 
@@ -134,6 +137,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
   //: 5. Grant access to protected route
   req.user = currentUser;
+  res.locals.user = currentUser;
   next();
 });
 
@@ -158,13 +162,12 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   const resetToken = user.createPasswordResetToken();
   await user.save({ validateBeforeSave: false });
   //: 3. Send it to user's email
-  const resultUrl = `${req.protocol}://${req.get("host")}/api/v1/users/resetPassword/${resetToken}`;
-  const message = `Forgot your password? Submit a PATCH request with your new password and passwordConfirm to: ${resultUrl}.\nIf you didn't forget your password, please ignore this email!`;
   try {
-    await sendEmail({
-      email: email,
-      subject: "Your password reset token (valid for 10 minutes)",
-      message,
+    const resetUrl = `${req.protocol}://${req.get("host")}/api/v1/users/resetPassword/${resetToken}`;
+    await new Email(user, resetUrl).sendPasswordReset();
+    res.status(200).json({
+      status: "success",
+      message: "Token sent to email!",
     });
   } catch (err) {
     user.passwordResetToken = undefined;
@@ -177,10 +180,6 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
       )
     );
   }
-  res.status(200).json({
-    status: "success",
-    message: "Token sent to email!",
-  });
 });
 
 exports.resetPassword = catchAsync(async (req, res, next) => {

@@ -2,6 +2,57 @@ const Tour = require("../models/tourModel");
 const catchAsync = require("../utils/catchAsync");
 const factory = require("./handlerFactory");
 const AppError = require("../utils/appError");
+const imageController = require("./imageController");
+
+exports.uploadTourImages = imageController.upload.fields([
+  { name: "imageCover", maxCount: 1 },
+  { name: "images", maxCount: 3 },
+]);
+
+exports.resizeTourImages = catchAsync(async (req, res, next) => {
+  if (!req.files.imageCover || !req.files.images) next();
+
+  //: 1) Cover image
+  req.body.imageCover = `tour-${req.params.id}-${Date.now()}-cover.jpeg`;
+  const imageCoverOptions = {
+    file: req.files.imageCover[0].buffer,
+    filename: req.body.imageCover,
+    dir: "public/img/tours",
+    format: "jpeg",
+    quality: 90,
+    resize: {
+      width: 2000,
+      height: 1333,
+      fit: "cover",
+    },
+  };
+  await imageController.imageOptions(imageCoverOptions);
+
+  //: 2) Images
+  req.body.images = [];
+  await Promise.all(
+    req.files.images.map(async (file, i) => {
+      const filename = `tour=${req.params.id}-${Date.now()}-${i + 1}.jpeg`;
+      const imagesOptions = {
+        file: file.buffer,
+        filename: filename,
+        dir: "public/img/tours",
+        format: "jpeg",
+        quality: 90,
+        resize: {
+          width: 2000,
+          height: 1333,
+          fit: "cover",
+        },
+      };
+      await imageController.imageOptions(imagesOptions);
+
+      req.body.images.push(filename);
+    })
+  );
+
+  next();
+});
 
 exports.aliasTopTours = (req, res, next) => {
   req.query.limit = "5";
