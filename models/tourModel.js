@@ -174,7 +174,7 @@ tourSchema.pre("aggregate", function (next) {
     pipeline.unshift({ $match: { description: { $ne: undefined } } });
   }
 
-  console.log(this.pipeline());
+  //? console.log(this.pipeline());
   next();
 });
 

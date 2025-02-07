@@ -95,7 +95,7 @@ module.exports = (err, req, res, next) => {
     sendErrorDev(err, req, res);
   } else if (process.env.NODE_ENV === "production") {
     //? let error = { ...err };
-    console.log(err.constructor.name);
+    // console.log(err.constructor.name);
     if (err instanceof mongoose.Error.CastError) err = handleCastErrorDB(err);
     if (err instanceof mongoose.Error.ValidationError)
       err = handleValidationErrorDB(err);
